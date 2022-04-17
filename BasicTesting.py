@@ -5,12 +5,13 @@
 """
 import numpy as np
 from copy import deepcopy
-import QuantComp as qc
+import Opers as op import Library as lib
 from importlib import reload as re
-re(qc)
+re(op)
+re(lib)
 
 def testBasis1():
-    basis=qc.oneZeroBasis()
+    basis=lib.oneZeroBasis
     print("For one, zero basis")
     print("vec1 is", basis.vec1)
     print("vec2 is", basis.vec2)
@@ -20,7 +21,7 @@ def testBasis1():
     print(basis)
 
 def testBasis2():
-    basis=qc.pmBasis()
+    basis=lib.pmBasis
     print("For plus minus basis")
     print("vec1 is", basis.vec1)
     print("vec2 is", basis.vec2)
@@ -31,11 +32,11 @@ def testBasis2():
 
 def testStr():
     a =np.array([1,2,3])
-    print(qc.arr2SqrtStr(a))
+    print(lib.arr2SqrtStr(a))
     b= np.array([-np.sqrt(1/2),1+-1j*np.sqrt(3)/2],dtype=np.complex128)
-    print(qc.arr2SqrtStr(b))
+    print(lib.arr2SqrtStr(b))
 
-    basis=qc.pmBasis()
+    basis=lib.pmBasis
     print(basis)
 
 def testOps():
@@ -44,12 +45,24 @@ def testOps():
     # print(qc.pauliZ)
     # print(qc.H)
     ang = np.pi/6
-    print(qc.T(ang))
-    print(qc.R(ang))
-    print(qc.K(ang))
+    print(op.T(ang))
+    print(op.R(ang))
+    print(op.K(ang))
 
+def changeBasis():
+    oper = op.pauliX
+    psi = lib.psi(np.array([1,0]))
+    # print(oper.__str__(whichBasis=True))
+    print("Before change  of basis psi is", psi)
+    psi.changeRep(lib.pmBasis)
+    print("After change  of basis psi is", psi)
+
+    print("\nBefore change of basis oper is\n", oper)
+    oper.changeRep(lib.pmBasis)
+    print("After change of basis oper is\n", oper)
 if __name__=="__main__":
     # testBasis1()
     # testBasis2()
     # testStr()
-    testOps()
+    # testOps()
+    changeBasis()

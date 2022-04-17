@@ -6,24 +6,24 @@
 This file is for the definitions of commonly used operators
 """
 import numpy as np
-import Typing as tp
+import Library as lib
 # from copy import deepcopy, copy
 
 pauliX = np.array([[0,1],
                   [1,0]],dtype=np.complex128)
-pauliX = tp.oper(pauliX)
+pauliX = lib.oper(pauliX)
 
 pauliY = 1j*np.array([[0,-1],
                      [1,0]],dtype=np.complex128)
-pauliY = tp.oper(pauliY)
+pauliY = lib.oper(pauliY)
 
 pauliZ = np.array([[1,0],
                   [0,-1]],dtype=np.complex128)
-pauliZ = tp.oper(pauliZ)
+pauliZ = lib.oper(pauliZ)
 
 H = 0.5**(1/2)* np.array([[1,1],
                           [1,-1]],dtype=np.complex128)
-H = tp.oper(H)
+H = lib.oper(H)
 
 def T(alpha):
     """
@@ -33,7 +33,7 @@ def T(alpha):
     t2 = np.e**(-1j*alpha)
     mat = np.array([[t1,0],
                     [0,t2]],dtype=np.complex128)
-    return tp.oper(mat)
+    return lib.oper(mat)
 
 def R(beta):
     """
@@ -43,7 +43,7 @@ def R(beta):
     sinBeta = np.sin(beta)
     mat = np.array([[cosBeta,sinBeta],
                     [-sinBeta,cosBeta]],dtype=np.complex128)
-    return tp.oper(mat)
+    return lib.oper(mat)
 
 def K(delta):
     """
@@ -52,4 +52,4 @@ def K(delta):
     t1 = np.e**(1j*delta)
     mat = np.array([[t1,0],
                     [0,t1]],dtype=np.complex128)
-    return tp.oper(mat)
+    return lib.oper(mat)
