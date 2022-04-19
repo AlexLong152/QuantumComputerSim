@@ -69,12 +69,46 @@ def changeBasis():
 
 
 def testTensorPsi():
-    psi1 = lib.psi(np.array([1, 0]))
-    psi2 = lib.psi(np.array([0, 1]))
+    psi1 = lib.psi(np.array([1, 1]))
+    psi2 = lib.psi(np.array([1 ,1]))
     psi3 = lib.psi( 1/np.sqrt(2)*np.array([1, 1j]))
 
     psi = lib.psiTensorProd(psi1,psi2,psi3)
+    psi = lib.psiTensorProd([psi1,psi2,psi3])
+    psi2 = deepcopy(psi)
+    print("print(psi) before tensor product gives: ",psi)
+    psi.preformProd([0,1])
+    print("print(psi) after tensor product gives: ",psi)
+    print("psi before prod is")
     print(psi)
+    psi.preformProd()
+    print("doing all the tensor products gives")
+    print(psi)
+    print("we can also do this all at once and should get the same answer")
+    psi2.preformProd()
+    print(psi2)
+
+def testNumBasis():
+    psi = lib.psi(np.array([1,1,1,1]))
+    print(psi)
+    psi.normalize()
+    print(psi)
+
+
+def testTensorMat():
+    a = op.pauliX
+    b = op.pauliY
+    c = op.pauliZ
+    # o = lib.operTensorProd([a,b])
+    # print(o)
+    # o.preformProd()
+    # print(o)
+
+    o2 = lib.operTensorProd(a,b,c)
+    print(o2.mats[0])
+    print(o2.mats[1])
+    o2.preformProd([0,1])
+    print(o2)
 
 if __name__ == "__main__":
     # testBasis1()
@@ -82,4 +116,6 @@ if __name__ == "__main__":
     # testStr()
     # testOps()
     # changeBasis()
-    testTensorPsi()
+    # testNumBasis()
+    # testTensorPsi()
+    testTensorMat()

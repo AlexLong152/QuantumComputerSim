@@ -2,19 +2,27 @@
 
 """
 @author: alexl
+TODO: impliment dot products for each of the things with respect to eachother
 """
 import numpy as np
 from copy import deepcopy, copy
-from numpy.linalg import matrix_rank
-
+from collections.abc import Iterable
 
 class basis:
     """
     vec1 and vec2 are represented in the standard |0>, |1> basis
+    Atributes
+    -------------
+    vecs: 2d ndarray
+        vecs[i] gives the ith vector
+
+    vecStings: 1d ndarray of strings
+        vecStrings[i] should give the representation of the ith vector as it should be represented in the ket
     """
 
     def __init__(self, vecs, vecStrings):
-        self.vecs = np.array(vecs)
+        # self.vecs = np.array(vecs)
+        self.vecs = vecs
         self.vecStrings = vecStrings
 
     @property
@@ -48,6 +56,24 @@ class basis:
         return out+"}"
 
 
+def operMakeNumBasis(opr):
+    """
+    makes basis |0>, |1>, |2>... for operator of dimension n
+    """
+    nums = np.arange(len(opr.mat[0]),dtype=int)
+    strings = np.array([str(i) for i in nums])
+    vecs = np.identity(len(opr.mat[0]))
+    return basis(vecs, strings)
+
+def makeNumBasis(psi):
+    """
+    makes basis |0>, |1>, |2>... for psi of dimension n
+    """
+    nums = np.arange(len(psi.vec),dtype=int)
+    strings = np.array([str(i) for i in nums])
+    vecs = np.identity(len(psi.vec))
+    return basis(vecs, strings)
+
 _vec1 = 1/np.sqrt(2)*np.array([1, 1], dtype=np.complex128)
 _vec2 = 1/np.sqrt(2)*np.array([1, -1], dtype=np.complex128)
 _strings = np.array(["+", "-"])
@@ -64,24 +90,48 @@ oneZeroBasis = basis(np.array([_vec1, _vec2]), _strings)
 class psi:
     """
     The Wavefunction
+
+    if no basis is passed, then assumes the representation is just the standard numeric basis
+
+    Attributes
+    -----------
+    vec: 1d ndarray
+        The coefficents of the basis
+    basis: optional, instance of basis class
+        Which basis the vecs belong to
+    
+    normalize: function
+        void function that normalizes vectors
     """
 
-    def __init__(self, vec, basis=oneZeroBasis):
-        self.basis = basis
+    def __init__(self, vec, basis=None):
 
         if isinstance(vec, np.ndarray):
             # This is the current representation
             self.vec = deepcopy(vec).astype(np.complex128)
 
+        if isinstance(basis, type(None)):
+            self.basis = makeNumBasis(self)
+        else: 
+            self.basis = basis
         # elif isinstance(vec, str):
         #     self.vec = operString2Mat(vec, basis)
-        else:
-            raise TypeError("oper type not supported")
+        # else:
+        #     raise TypeError("oper type not supported")
 
     def changeRep(self, newBasis):
         if newBasis != self.basis:
             self.vec = waveChangeBasis(self.vec, self.basis, newBasis)
             self.basis = newBasis
+
+    def normalize(self):
+        squared = np.conjugate(self.vec)*self.vec
+        c = np.sum(self.vec).real
+        # print("c before is:", c)
+        self.vec = self.vec/c
+        # squared = np.conjugate(self.vec)*self.vec
+        # c = np.sum(self.vec)
+        # print("c after is:", c)
 
     def __str__(self):
         out = ""
@@ -107,9 +157,15 @@ class psiTensorProd:
     psi3 = lib.psi( 1/np.sqrt(2)*np.array([1, 1j]))
 
     psi = lib.psiTensorProd(psi1,psi2,psi3)
-    """
 
+    can also init with an array, or list and it is handled automatically
+    psi = lib.psiTensorProd([psi1,psi2,psi3])
+    """
     def __init__(self, *psis):
+        if isinstance(psis[0], (np.ndarray, list, tuple)):
+            if len(psis)>1:
+                raise ValueError("If you are going to pass psis as array, can only have one arg")
+            psis = psis[0]
 
         if len(psis)==1:
             raise ValueError("You should use the regular psi class, not the tensor product version")
@@ -118,7 +174,8 @@ class psiTensorProd:
 
     def preformProd(self, indicies=None):
         """
-        Preforms the tensor product on the indicies given
+        Preforms the tensor product on the indicies given.
+        If all tensor products are preformed, then automatically turns this class into a psi class
 
         Parameters
         ------------
@@ -134,7 +191,7 @@ class psiTensorProd:
         ---------
         Nothing, this only updates the internal state. If you want to view the state after, just print it
         """
-        if isinstance((indicies), type(None)):
+        if isinstance(indicies, type(None)):
             indicies=np.arange(len(self.psis),dtype=int)
 
         if len(np.shape(indicies))==1: #deal with case when indicies is just passed as an array
@@ -147,21 +204,33 @@ class psiTensorProd:
         firstVals = copy(indicies[:,0])
         psiList = []
         i=0
+        # print("indicies=",indicies)
         while i < len(self.psis):
             if i in firstVals:
                 vec = np.array(1, dtype=np.complex128)
-                basisList = [] 
-                for j in vals:
-                    vec = np.kron(vec, self.psis[j].vec)
-                    basisList.append(self.psis[j].basis)
+                for j in indicies[i]:
+                    psi1 = deepcopy(self.psis[j])
+                    psi1.changeRep(makeNumBasis(psi1))
+                    vec = np.kron(vec, psi1.vec)
+                #     print("vec=", vec)
+                # print("len(vec)=",len(vec))
+                psiVal = psi(vec) # Basis made automatically
+                psiList.append(psiVal)
 
-                combinedBasis = combineBasis(basisList)
-                psiTmp = psi(vec,basis=basis)
-                psiList.append(vec)
                 i = indicies[i][-1]+1
+                # print("i after increment=", i)
+                # print("len(self.psis)=",len(self.psis))
             else:
                 psiList.append(self.psis[i])
                 i+=1
+        if len(psiList)==1:
+            # if theres only one element left, then don't have to represent this as 
+            # a tensor product anymore, so just represent it at a psi class
+            self.__class__= psi
+            self.__init__(psiList[0].vec)
+            # print("type of self is",type(self))
+        else:
+            self.psis= np.array(psiList)
 
     def __str__(self):
         out = ""
@@ -169,10 +238,7 @@ class psiTensorProd:
             out += "( " + psi.__str__() + " )" + u" \u2297  " #  unicode for tensor product
         out = out[:-3]
         return out
-
-def combineBasis(basisList):
-    #TODO: impliment this 
-    pass
+        
 
 def isConsecutive(indicies):
     """
@@ -191,12 +257,114 @@ def isConsecutive(indicies):
             return False
     return True
 
+class operTensorProd:
+    """
+    A class for representing a tensor product of operators
+    can initalize as multiple arguments, or as one list as seen below
+
+    a = opmatList
+    b = op.pauliY
+    c = op.pauliZ
+    lib.operTensorProd([a,b,c])
+    lib.operTensorProd(a,b,c)
+
+    args
+    -----
+    matsList: instance of operator class, or ndarray or list of operator class
+
+    *othermats: other instances of operator class
+    """
+
+    def __init__(self, mats, *otherMats):
+        if len(otherMats)==0:
+            self.mats = mats
+        else:
+            tmp = []
+            tmp.append(mats)
+            for val in otherMats:
+                tmp.append(val)
+
+            self.mats = np.array(tmp, dtype=object)
+
+        # [print(mat) for mat in self.mats]
+
+    def preformProd(self, indicies=None):
+        """
+        Preforms the tensor product on the indicies given.
+        If all tensor products are preformed, then automatically turns this class into a psi class
+
+        Parameters
+        ------------
+        indicies, optional: 2d ndarray, 
+            If None, then all elements are taken in the tensor product
+
+            indicies[0] should give the first elements in psis for which the tensor product is taken
+
+            indicies[0] must return consecutive values i.e. 1,2,3, otherwise the tensor product
+            gets messed up
+        
+        Returns
+        ---------
+        Nothing, this only updates the internal state. If you want to view the state after, just print it
+        """
+        if isinstance(indicies, type(None)):
+            indicies=np.arange(len(self.mats),dtype=int)
+
+        if len(np.shape(indicies))==1: #deal with case when indicies is just passed as an array
+            indicies=np.array([indicies])
+
+        if not isConsecutive(indicies):
+            raise ValueError("indicies must be consecutive")
+
+        # flatInd = np.ndarray.flatten(indicies)
+        firstVals = copy(indicies[:,0])
+        matList = []
+        i=0
+        # print("indicies=",indicies)
+        while i < len(self.mats):
+            if i in firstVals:
+                mat = np.array(1, dtype=np.complex128)
+                for j in indicies[i]:
+                    mat1 = deepcopy(self.mats[j])
+                    # print("mat to be taking prodcut with is\n", mat1)
+                    mat1.changeRep(operMakeNumBasis(mat1))
+                    mat = np.kron(mat, mat1.mat)
+                    # print("mat after this step is\n",mat)
+                #     print("vec=", vec)
+                # print("len(vec)=",len(vec))
+                matVal = oper(mat) # Basis made automatically
+                matList.append(matVal)
+
+                i = indicies[i][-1]+1
+                # print("i after increment=", i)
+                # print("len(self.psis)=",len(self.psis))
+            else:
+                matList.append(self.mats[i])
+                i+=1
+
+        if len(matList)==1:
+            # if theres only one element left, then don't have to represent this as 
+            # a tensor product anymore, so just represent it at a psi class
+            self.__class__= oper
+            self.__init__(matList[0].mat)
+            # print("type of self is",type(self))
+        else:
+            self.mats= np.array(matList,dtype=object)
+
+
+    def __str__(self):
+        out = ""
+        for mat in self.mats:
+            out += mat.__str__() + u" \u2297  " +"\n"#  unicode for tensor product
+        out = out[:-6]
+        return out
+
 class oper:
     """
     Operator Class
     """
 
-    def __init__(self, mat, basis=oneZeroBasis):
+    def __init__(self, mat, basis=None):
         if isinstance(mat, np.ndarray):
             # This is the current representation
             self.mat = deepcopy(mat).astype(np.complex128)
@@ -206,7 +374,10 @@ class oper:
         else:
             raise TypeError("oper type not supported")
 
-        self.basis = basis  # basis
+        if isinstance(basis, type(None)):
+            self.basis = operMakeNumBasis(self)
+        else: 
+            self.basis = basis
 
     def changeRep(self, newBasis):
         if newBasis != self.basis:
@@ -221,12 +392,12 @@ class oper:
                 tmp = toSqrtStr(self.mat[i, j])
                 if j != len(self.mat[0])-1:
                     tmp += ", "
-        # strMat = np.zeros(np.shape(self.mat),dtype=str)
 
                 else:
                     tmp += ")"
                 strMat += tmp
             strMat += '\n'
+
         if whichBasis:
             strMat += "Basis is "
             vecStrings = self.basis.vecStrings
