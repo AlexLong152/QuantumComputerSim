@@ -70,15 +70,15 @@ def changeBasis():
 
 def testTensorPsi():
     psi1 = lib.psi(np.array([1, 1]))
-    psi2 = lib.psi(np.array([1 ,1]))
-    psi3 = lib.psi( 1/np.sqrt(2)*np.array([1, 1j]))
+    psi2 = lib.psi(np.array([1, 1]))
+    psi3 = lib.psi(1/np.sqrt(2)*np.array([1, 1j]))
 
-    psi = lib.psiTensorProd(psi1,psi2,psi3)
-    psi = lib.psiTensorProd([psi1,psi2,psi3])
+    psi = lib.psiTensorProd(psi1, psi2, psi3)
+    psi = lib.psiTensorProd([psi1, psi2, psi3])
     psi2 = deepcopy(psi)
-    print("print(psi) before tensor product gives: ",psi)
-    psi.preformProd([0,1])
-    print("print(psi) after tensor product gives: ",psi)
+    print("print(psi) before tensor product gives: ", psi)
+    psi.preformProd([0, 1])
+    print("print(psi) after tensor product gives: ", psi)
     print("psi before prod is")
     print(psi)
     psi.preformProd()
@@ -88,8 +88,9 @@ def testTensorPsi():
     psi2.preformProd()
     print(psi2)
 
+
 def testNumBasis():
-    psi = lib.psi(np.array([1,1,1,1]))
+    psi = lib.psi(np.array([1, 1, 1, 1]))
     print(psi)
     psi.normalize()
     print(psi)
@@ -104,11 +105,12 @@ def testTensorMat():
     # o.preformProd()
     # print(o)
 
-    o2 = lib.operTensorProd(a,b,c)
+    o2 = lib.operTensorProd(a, b, c)
     print(o2.mats[0])
     print(o2.mats[1])
-    o2.preformProd([0,1])
+    o2.preformProd([0, 1])
     print(o2)
+
 
 if __name__ == "__main__":
     # testBasis1()
@@ -117,5 +119,5 @@ if __name__ == "__main__":
     # testOps()
     # changeBasis()
     # testNumBasis()
-    # testTensorPsi()
+    testTensorPsi()
     testTensorMat()
