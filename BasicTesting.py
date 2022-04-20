@@ -5,13 +5,15 @@
 """
 import numpy as np
 from copy import deepcopy
-import Opers as op import Library as lib
+import Opers as op
+import Library as lib
 from importlib import reload as re
 re(op)
 re(lib)
 
+
 def testBasis1():
-    basis=lib.oneZeroBasis
+    basis = lib.oneZeroBasis
     print("For one, zero basis")
     print("vec1 is", basis.vec1)
     print("vec2 is", basis.vec2)
@@ -20,8 +22,9 @@ def testBasis1():
     print("vec2Str is", basis.vec2Str)
     print(basis)
 
+
 def testBasis2():
-    basis=lib.pmBasis
+    basis = lib.pmBasis
     print("For plus minus basis")
     print("vec1 is", basis.vec1)
     print("vec2 is", basis.vec2)
@@ -30,14 +33,16 @@ def testBasis2():
     print("vec2Str is", basis.vec2Str)
     print(basis)
 
+
 def testStr():
-    a =np.array([1,2,3])
+    a = np.array([1, 2, 3])
     print(lib.arr2SqrtStr(a))
-    b= np.array([-np.sqrt(1/2),1+-1j*np.sqrt(3)/2],dtype=np.complex128)
+    b = np.array([-np.sqrt(1/2), 1+-1j*np.sqrt(3)/2], dtype=np.complex128)
     print(lib.arr2SqrtStr(b))
 
-    basis=lib.pmBasis
+    basis = lib.pmBasis
     print(basis)
+
 
 def testOps():
     # print(qc.pauliX)
@@ -49,10 +54,11 @@ def testOps():
     print(op.R(ang))
     print(op.K(ang))
 
+
 def changeBasis():
     oper = op.pauliX
-    psi = lib.psi(np.array([1,0]))
-    # print(oper.__str__(whichBasis=True))
+    psi = lib.psi(np.array([1, 0]))
+    print(oper.__str__(whichBasis=True))
     print("Before change  of basis psi is", psi)
     psi.changeRep(lib.pmBasis)
     print("After change  of basis psi is", psi)
@@ -60,9 +66,56 @@ def changeBasis():
     print("\nBefore change of basis oper is\n", oper)
     oper.changeRep(lib.pmBasis)
     print("After change of basis oper is\n", oper)
-if __name__=="__main__":
+
+
+def testTensorPsi():
+    psi1 = lib.psi(np.array([1, 1]))
+    psi2 = lib.psi(np.array([1 ,1]))
+    psi3 = lib.psi( 1/np.sqrt(2)*np.array([1, 1j]))
+
+    psi = lib.psiTensorProd(psi1,psi2,psi3)
+    psi = lib.psiTensorProd([psi1,psi2,psi3])
+    psi2 = deepcopy(psi)
+    print("print(psi) before tensor product gives: ",psi)
+    psi.preformProd([0,1])
+    print("print(psi) after tensor product gives: ",psi)
+    print("psi before prod is")
+    print(psi)
+    psi.preformProd()
+    print("doing all the tensor products gives")
+    print(psi)
+    print("we can also do this all at once and should get the same answer")
+    psi2.preformProd()
+    print(psi2)
+
+def testNumBasis():
+    psi = lib.psi(np.array([1,1,1,1]))
+    print(psi)
+    psi.normalize()
+    print(psi)
+
+
+def testTensorMat():
+    a = op.pauliX
+    b = op.pauliY
+    c = op.pauliZ
+    # o = lib.operTensorProd([a,b])
+    # print(o)
+    # o.preformProd()
+    # print(o)
+
+    o2 = lib.operTensorProd(a,b,c)
+    print(o2.mats[0])
+    print(o2.mats[1])
+    o2.preformProd([0,1])
+    print(o2)
+
+if __name__ == "__main__":
     # testBasis1()
     # testBasis2()
     # testStr()
     # testOps()
-    changeBasis()
+    # changeBasis()
+    # testNumBasis()
+    # testTensorPsi()
+    testTensorMat()
