@@ -70,15 +70,15 @@ def changeBasis():
 
 def testTensorPsi():
     psi1 = lib.psi(np.array([1, 1]))
-    psi2 = lib.psi(np.array([1 ,1]))
-    psi3 = lib.psi( 1/np.sqrt(2)*np.array([1, 1j]))
+    psi2 = lib.psi(np.array([1, 1]))
+    psi3 = lib.psi(1/np.sqrt(2)*np.array([1, 1j]))
 
-    psi = lib.psiTensorProd(psi1,psi2,psi3)
-    psi = lib.psiTensorProd([psi1,psi2,psi3])
+    psi = lib.psiTensorProd(psi1, psi2, psi3)
+    psi = lib.psiTensorProd([psi1, psi2, psi3])
     psi2 = deepcopy(psi)
-    print("print(psi) before tensor product gives: ",psi)
-    psi.preformProd([0,1])
-    print("print(psi) after tensor product gives: ",psi)
+    print("print(psi) before tensor product gives: ", psi)
+    psi.preformProd([0, 1])
+    print("print(psi) after tensor product gives: ", psi)
     print("psi before prod is")
     print(psi)
     psi.preformProd()
@@ -88,8 +88,9 @@ def testTensorPsi():
     psi2.preformProd()
     print(psi2)
 
+
 def testNumBasis():
-    psi = lib.psi(np.array([1,1,1,1]))
+    psi = lib.psi(np.array([1, 1, 1, 1]))
     print(psi)
     psi.normalize()
     print(psi)
@@ -99,16 +100,64 @@ def testTensorMat():
     a = op.pauliX
     b = op.pauliY
     c = op.pauliZ
+    d = op.pauliX
+    e = op.H
+
     # o = lib.operTensorProd([a,b])
     # print(o)
     # o.preformProd()
     # print(o)
 
-    o2 = lib.operTensorProd(a,b,c)
-    print(o2.mats[0])
-    print(o2.mats[1])
-    o2.preformProd([0,1])
+    o2 = lib.operTensorProd(a, b, c, d, e)
+    ind = np.array([[0,1],[2,3]])
+    o2.preformProd(ind)
     print(o2)
+
+def testTensorPsi2():
+    psi1 = lib.psi(np.array([1, 1j]))
+    psi2 = lib.psi(np.array([1j, -2]))
+    psi3 = lib.psi(1/np.sqrt(2)*np.array([1, 1j]))
+    psi4 = lib.psi(np.array([2, 1j]))
+    #  psi5 = lib.psi(np.array([3j, 1]))
+
+    # psiTot = lib.psiTensorProd(psi1,psi2,psi2,psi3,psi4)
+    psiTot = lib.psiTensorProd(psi1,psi2,psi2,psi3,psi4)
+    psiTot2 =deepcopy(psiTot)
+
+    print(psiTot)
+    ind = np.array([[0,1],[2,3]])
+    psiTot.preformProd(ind)
+    print(psiTot)
+
+    psiTot.preformProd()
+    psiTot2.preformProd()
+
+    print("psiTot:\n", psiTot)
+    print("psiTot2:\n", psiTot2)
+    print("Compare arrays vy checking for zeros:", (psiTot.vec-psiTot2.vec==0).all())
+    # print("Equality check yields", psiTot==psiTot2)
+
+def testToSqrt():
+    val = 1 -(1/np.sqrt(2))*1j
+    ar = np.array([val,-1,-1j,1])
+    psi = lib.psi(ar)
+    # print(lib.toSqrtStr(val))
+    print(psi)
+
+def testOperOnPsi():
+    psi1 = lib.psi(np.array([1,-1]))
+    psi1.normalize()
+
+    psi2 = lib.psi(np.array([2,2j]))
+    psi2.normalize()
+
+    opr1 = op.pauliX
+    opr2 = op.pauliY
+
+    psi = lib.psiTensorProd(psi1,psi2)
+    opr = lib.operTensorProd(opr1, opr2)
+    psiOut = lib.operOnPsi(opr, psi)
+    print(psiOut)
 
 if __name__ == "__main__":
     # testBasis1()
@@ -118,4 +167,7 @@ if __name__ == "__main__":
     # changeBasis()
     # testNumBasis()
     # testTensorPsi()
-    testTensorMat()
+    # testTensorMat()
+    # testTensorPsi2()
+    # testToSqrt()
+    testOperOnPsi()

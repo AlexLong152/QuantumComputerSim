@@ -2,11 +2,11 @@
 
 """
 @author: alexl
-TODO: impliment dot products for each of the things with respect to eachother
 """
 import numpy as np
 from copy import deepcopy, copy
 from collections.abc import Iterable
+import Library as lib # importing self for type checking
 
 class basis:
     """
@@ -65,13 +65,13 @@ def operMakeNumBasis(opr):
     vecs = np.identity(len(opr.mat[0]))
     return basis(vecs, strings)
 
-def makeNumBasis(psi):
+def makeNumBasis(wvPsi):
     """
     makes basis |0>, |1>, |2>... for psi of dimension n
     """
-    nums = np.arange(len(psi.vec),dtype=int)
+    nums = np.arange(len(wvPsi.vec),dtype=int)
     strings = np.array([str(i) for i in nums])
-    vecs = np.identity(len(psi.vec))
+    vecs = np.identity(len(wvPsi.vec))
     return basis(vecs, strings)
 
 _vec1 = 1/np.sqrt(2)*np.array([1, 1], dtype=np.complex128)
@@ -86,6 +86,42 @@ _vec2 = np.array([0, 1], dtype=np.complex128)
 _strings = np.array(["0", "1"])
 oneZeroBasis = basis(np.array([_vec1, _vec2]), _strings)
 
+def operOnPsi(opr, wvPsi):
+    """
+    Preforms the operator operation on the wavefunction psi
+    op, and wvPsi can be their normal version, or their tensor version, but if they are the tensor version 
+    then the dimensions have to match
+    """
+    opr =copy(opr)
+    wvPsi =copy(wvPsi)
+
+    if type(wvPsi) == lib.psi:
+        if opr.basis!= wvPsi.basis:
+            numBasis = makeNumBasis(wvPsi)
+            opr.changeRep(numBasis)
+            wvPsi.changeRep(numBasis)            
+
+        vec = np.dot(opr.mat,wvPsi.vec)
+        newPsi = psi(vec,basis=wvPsi.basis)
+        return newPsi
+
+    else:
+        assert type(wvPsi) == lib.psiTensorProd
+        n = len(wvPsi.psis)
+        psiOut = np.empty(n,dtype=object)
+        for i in range(len(wvPsi.psis)):
+            psiTmp = wvPsi.psis[i]
+            oprTmp = opr.mats[i]
+
+            if oprTmp.basis!= psiTmp.basis:
+                numBasis = makeNumBasis(psiTmp)
+                oprTmp.changeRep(numBasis)
+                psiTmp.changeRep(numBasis)            
+
+            psiOut[i] = operOnPsi(oprTmp,psiTmp) # recursive lol
+
+        psiOut = psiTensorProd(psiOut)
+        return psiOut
 
 class psi:
     """
@@ -114,39 +150,53 @@ class psi:
             self.basis = makeNumBasis(self)
         else: 
             self.basis = basis
-        # elif isinstance(vec, str):
-        #     self.vec = operString2Mat(vec, basis)
-        # else:
-        #     raise TypeError("oper type not supported")
 
     def changeRep(self, newBasis):
         if newBasis != self.basis:
             self.vec = waveChangeBasis(self.vec, self.basis, newBasis)
             self.basis = newBasis
 
-    def normalize(self):
+    def normalize(self, returnC=False):
         squared = np.conjugate(self.vec)*self.vec
-        c = np.sum(self.vec).real
-        # print("c before is:", c)
+        c = np.sqrt(np.sum(squared).real)
         self.vec = self.vec/c
-        # squared = np.conjugate(self.vec)*self.vec
-        # c = np.sum(self.vec)
-        # print("c after is:", c)
+        if returnC:
+            return c, self
 
     def __str__(self):
         out = ""
-        for i, x in enumerate(self.vec):
-            if i == 0:
-                sign = ""
+        for i, x in enumerate(copy(self.vec)):
+            realStr =toSqrtStr(x.real)
+            imagStr = ""
+            if x.imag!=0:
+                imagStr = toSqrtStr(x.imag)+"j"
             else:
-                if x.real < 0:
-                    sign = "-"
-                else:
-                    sign = "  +  "
-            out += sign+toSqrtStr(x)+"|"+self.basis.vecStrings[i]+">"
+                imagStr = ""
+
+            if imagStr == "0j" or imagStr=="0.0j":
+                imagStr = ""
+
+            # if i==0 and signStr(x.real)=="+":
+            #     realStr = toSqrtStr(x.real)
+            if i!=0:
+                preString = " "
+            else: 
+                preString = ""
+            if realStr=="0" and imagStr!=0:
+                realStr=""
+            if i!=0 and x.real>0:
+                realStr = "+ "+ realStr
+            if i!=0 and realStr == "" and x.imag>0:
+                imagStr = "+"+imagStr
+            out += preString+realStr+imagStr+"|"+self.basis.vecStrings[i]+"> "
         return out
 
-
+def signStr(val):
+    if val>=0:
+        return "+"
+    if val<0:
+        return "-"
+       
 class psiTensorProd:
     """
     A class for a wavefunction that is a tensor prodcut of other states.
@@ -208,18 +258,16 @@ class psiTensorProd:
         while i < len(self.psis):
             if i in firstVals:
                 vec = np.array(1, dtype=np.complex128)
-                for j in indicies[i]:
+                loc = np.where(firstVals==i)[0][0]
+                for j in indicies[loc]:
                     psi1 = deepcopy(self.psis[j])
                     psi1.changeRep(makeNumBasis(psi1))
                     vec = np.kron(vec, psi1.vec)
-                #     print("vec=", vec)
-                # print("len(vec)=",len(vec))
+
                 psiVal = psi(vec) # Basis made automatically
                 psiList.append(psiVal)
 
-                i = indicies[i][-1]+1
-                # print("i after increment=", i)
-                # print("len(self.psis)=",len(self.psis))
+                i = indicies[loc][-1]+1
             else:
                 psiList.append(self.psis[i])
                 i+=1
@@ -231,6 +279,16 @@ class psiTensorProd:
             # print("type of self is",type(self))
         else:
             self.psis= np.array(psiList)
+
+    def normalize(self):
+        Psi2 = deepcopy(self)
+        Psi2.preformProd()
+        # print(type(Psi2))
+        c = Psi2.normalize(returnC=True)
+
+        for i in range(len(self.psis)):
+            self.psis[i].vec= self.psis[i].vec/c
+        return self
 
     def __str__(self):
         out = ""
@@ -324,7 +382,10 @@ class operTensorProd:
         while i < len(self.mats):
             if i in firstVals:
                 mat = np.array(1, dtype=np.complex128)
-                for j in indicies[i]:
+                loc = np.where(firstVals==i)[0][0]
+                # print("j=", j)
+                # print("ind[i]=", indicies[i])
+                for j in indicies[loc]:
                     mat1 = deepcopy(self.mats[j])
                     # print("mat to be taking prodcut with is\n", mat1)
                     mat1.changeRep(operMakeNumBasis(mat1))
@@ -335,7 +396,7 @@ class operTensorProd:
                 matVal = oper(mat) # Basis made automatically
                 matList.append(matVal)
 
-                i = indicies[i][-1]+1
+                i = indicies[loc][-1]+1
                 # print("i after increment=", i)
                 # print("len(self.psis)=",len(self.psis))
             else:
@@ -470,33 +531,19 @@ def arr2SqrtStr(vec):
 
 
 def toSqrtStr(val):
-    def internal(val2):
-        rootList = {1/np.sqrt(2): "1/sqrt(2)",
-                    np.sqrt(3)/2: "sqrt(3)/2"}
-        for root in rootList.keys():
-            if abs(abs(val2)-root) < 10**-5:
-                if val2 >= 0:
-                    sign = ""
-                else:
-                    sign = "-"
-                return sign+rootList[root]
-        return str(np.round(val2, 4))
+    rootList = {1/np.sqrt(2): "1/sqrt(2)",
+                np.sqrt(3)/2: "sqrt(3)/2",
+                1.0:"1",
+                0.0:'0'}
 
-    if isinstance(val, complex):
-        if val.real != 0:
-            term1 = internal(val.real)
-        else:
-            term1 = ""
-        if val.imag != 0:
-            term2 = internal(val.imag)+"j"
-            if term1 != "":
-                term2 = " + " + term2
-        else:
-            term2 = ""
-        if term1 == "" and term2 == "":
-            term1 = "0"
+    term = str(val)
+    sign= ""
+    for root in rootList.keys():
+        if abs(abs(val)-root) < 10**-5:
+            term = rootList[root]
+            if val >= 0:
+                sign = ""
+            else:
+                sign = "-"
 
-        return term1+term2
-
-    else:
-        return internal(val)
+    return sign+term
