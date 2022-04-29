@@ -6,22 +6,24 @@
 import numpy as np
 from copy import deepcopy, copy
 from collections.abc import Iterable
-import Library as lib # importing self for type checking
+import Library as lib  # importing self for type checking
+from random import choices
+
 
 class basis:
     """
-    vec1 and vec2 are represented in the standard |0>, |1> basis
+    vecs are represented in the standard |0>, |1> basis
+
     Atributes
     -------------
     vecs: 2d ndarray
         vecs[i] gives the ith vector
 
-    vecStings: 1d ndarray of strings
+    vecStrings: 1d ndarray of strings
         vecStrings[i] should give the representation of the ith vector as it should be represented in the ket
     """
 
     def __init__(self, vecs, vecStrings):
-        # self.vecs = np.array(vecs)
         self.vecs = vecs
         self.vecStrings = vecStrings
 
@@ -60,19 +62,21 @@ def operMakeNumBasis(opr):
     """
     makes basis |0>, |1>, |2>... for operator of dimension n
     """
-    nums = np.arange(len(opr.mat[0]),dtype=int)
+    nums = np.arange(len(opr.mat[0]), dtype=int)
     strings = np.array([str(i) for i in nums])
     vecs = np.identity(len(opr.mat[0]))
     return basis(vecs, strings)
+
 
 def makeNumBasis(wvPsi):
     """
     makes basis |0>, |1>, |2>... for psi of dimension n
     """
-    nums = np.arange(len(wvPsi.vec),dtype=int)
+    nums = np.arange(len(wvPsi.vec), dtype=int)
     strings = np.array([str(i) for i in nums])
     vecs = np.identity(len(wvPsi.vec))
     return basis(vecs, strings)
+
 
 _vec1 = 1/np.sqrt(2)*np.array([1, 1], dtype=np.complex128)
 _vec2 = 1/np.sqrt(2)*np.array([1, -1], dtype=np.complex128)
@@ -86,42 +90,83 @@ _vec2 = np.array([0, 1], dtype=np.complex128)
 _strings = np.array(["0", "1"])
 oneZeroBasis = basis(np.array([_vec1, _vec2]), _strings)
 
+
 def operOnPsi(opr, wvPsi):
     """
     Preforms the operator operation on the wavefunction psi
-    op, and wvPsi can be their normal version, or their tensor version, but if they are the tensor version 
+    op, and wvPsi can be their normal version, or their tensor version, but if they are the tensor version
     then the dimensions have to match
     """
-    opr =copy(opr)
-    wvPsi =copy(wvPsi)
+    opr = copy(opr)
+    wvPsi = copy(wvPsi)
 
-    if type(wvPsi) == lib.psi:
-        if opr.basis!= wvPsi.basis:
+    if isinstance(wvPsi, lib.psi):
+        if opr.basis != wvPsi.basis:
             numBasis = makeNumBasis(wvPsi)
             opr.changeRep(numBasis)
-            wvPsi.changeRep(numBasis)            
+            wvPsi.changeRep(numBasis)
 
-        vec = np.dot(opr.mat,wvPsi.vec)
-        newPsi = psi(vec,basis=wvPsi.basis)
+        vec = np.dot(opr.mat, wvPsi.vec)
+        newPsi = psi(vec, basis=wvPsi.basis)
         return newPsi
 
     else:
-        assert type(wvPsi) == lib.psiTensorProd
+        assert isinstance(wvPsi, lib.psiTensorProd)
         n = len(wvPsi.psis)
-        psiOut = np.empty(n,dtype=object)
+        psiOut = np.empty(n, dtype=object)
         for i in range(len(wvPsi.psis)):
             psiTmp = wvPsi.psis[i]
             oprTmp = opr.mats[i]
 
-            if oprTmp.basis!= psiTmp.basis:
+            if oprTmp.basis != psiTmp.basis:
                 numBasis = makeNumBasis(psiTmp)
                 oprTmp.changeRep(numBasis)
-                psiTmp.changeRep(numBasis)            
+                psiTmp.changeRep(numBasis)
 
-            psiOut[i] = operOnPsi(oprTmp,psiTmp) # recursive lol
+            psiOut[i] = operOnPsi(oprTmp, psiTmp)  # recursive lol
 
         psiOut = psiTensorProd(psiOut)
         return psiOut
+
+
+def randMeasure(phi):
+    """
+    Makes an observation of the wavefunction phi, randomly choosing its value bases on the values of the
+    coefficents
+
+    Parameters
+    ------------
+    phi: instance of psi class
+
+    Returns
+    -----------
+    index: int
+        The index corrisponding to the element of the vector that was chosen
+    """
+    probs = measure(phi)
+    indicies = np.arange(len(phi.vec), dtype=int)
+    return choices(indicies, probs)[0]
+
+
+def measure(phi):
+    """
+    Gives the probability of measuring each of the values in the wavefunction
+
+    Parameters
+    -----------
+    phi: instance of psi class
+
+    Returns
+    -------
+    probs: ndarray
+        all the probabilities assosciated with the state
+    """
+    phi = deepcopy(phi)
+    phi.normalize()
+    # vec = copy(phi.vec)
+    probs = np.conjugate(phi.vec) * phi.vec
+    return probs.real
+
 
 class psi:
     """
@@ -135,7 +180,7 @@ class psi:
         The coefficents of the basis
     basis: optional, instance of basis class
         Which basis the vecs belong to
-    
+
     normalize: function
         void function that normalizes vectors
     """
@@ -148,7 +193,7 @@ class psi:
 
         if isinstance(basis, type(None)):
             self.basis = makeNumBasis(self)
-        else: 
+        else:
             self.basis = basis
 
     def changeRep(self, newBasis):
@@ -164,39 +209,43 @@ class psi:
             return c, self
 
     def __str__(self):
+        # yes this is very messy. Too bad!
         out = ""
         for i, x in enumerate(copy(self.vec)):
-            realStr =toSqrtStr(x.real)
+            realStr = toSqrtStr(x.real)
             imagStr = ""
-            if x.imag!=0:
+            if x.imag != 0:
                 imagStr = toSqrtStr(x.imag)+"j"
             else:
                 imagStr = ""
 
-            if imagStr == "0j" or imagStr=="0.0j":
+            if imagStr == "0j" or imagStr == "0.0j":
                 imagStr = ""
 
-            # if i==0 and signStr(x.real)=="+":
-            #     realStr = toSqrtStr(x.real)
-            if i!=0:
+            if i != 0:
                 preString = " "
-            else: 
+            else:
                 preString = ""
-            if realStr=="0" and imagStr!=0:
-                realStr=""
-            if i!=0 and x.real>0:
-                realStr = "+ "+ realStr
-            if i!=0 and realStr == "" and x.imag>0:
+            if i != 0 and x.real > 0:
+                realStr = "+ " + realStr
+            if i != 0 and realStr == "" and x.imag > 0:
                 imagStr = "+"+imagStr
+            if x.real == 0 and x.imag == 0 and i != 0:
+                preString = ""
+                realStr = "+0"
+                ximagStr = ""
+
             out += preString+realStr+imagStr+"|"+self.basis.vecStrings[i]+"> "
         return out
 
+
 def signStr(val):
-    if val>=0:
+    if val >= 0:
         return "+"
-    if val<0:
+    if val < 0:
         return "-"
-       
+
+
 class psiTensorProd:
     """
     A class for a wavefunction that is a tensor prodcut of other states.
@@ -211,14 +260,17 @@ class psiTensorProd:
     can also init with an array, or list and it is handled automatically
     psi = lib.psiTensorProd([psi1,psi2,psi3])
     """
+
     def __init__(self, *psis):
         if isinstance(psis[0], (np.ndarray, list, tuple)):
-            if len(psis)>1:
-                raise ValueError("If you are going to pass psis as array, can only have one arg")
+            if len(psis) > 1:
+                raise ValueError(
+                    "If you are going to pass psis as array, can only have one arg")
             psis = psis[0]
 
-        if len(psis)==1:
-            raise ValueError("You should use the regular psi class, not the tensor product version")
+        if len(psis) == 1:
+            raise ValueError(
+                "You should use the regular psi class, not the tensor product version")
 
         self.psis = np.asarray(psis)
 
@@ -229,74 +281,76 @@ class psiTensorProd:
 
         Parameters
         ------------
-        indicies, optional: 2d ndarray, 
+        indicies, optional: 2d ndarray,
             If None, then all elements are taken in the tensor product
 
             indicies[0] should give the first elements in psis for which the tensor product is taken
 
             indicies[0] must return consecutive values i.e. 1,2,3, otherwise the tensor product
             gets messed up
-        
+
         Returns
         ---------
         Nothing, this only updates the internal state. If you want to view the state after, just print it
         """
         if isinstance(indicies, type(None)):
-            indicies=np.arange(len(self.psis),dtype=int)
+            indicies = np.arange(len(self.psis), dtype=int)
 
-        if len(np.shape(indicies))==1: #deal with case when indicies is just passed as an array
-            indicies=np.array([indicies])
+        if len(np.shape(indicies)
+               ) == 1:  # deal with case when indicies is just passed as an array
+            indicies = np.array([indicies])
 
         if not isConsecutive(indicies):
             raise ValueError("indicies must be consecutive")
 
         # flatInd = np.ndarray.flatten(indicies)
-        firstVals = copy(indicies[:,0])
+        firstVals = copy(indicies[:, 0])
         psiList = []
-        i=0
+        i = 0
         # print("indicies=",indicies)
         while i < len(self.psis):
             if i in firstVals:
                 vec = np.array(1, dtype=np.complex128)
-                loc = np.where(firstVals==i)[0][0]
+                loc = np.where(firstVals == i)[0][0]
                 for j in indicies[loc]:
                     psi1 = deepcopy(self.psis[j])
                     psi1.changeRep(makeNumBasis(psi1))
                     vec = np.kron(vec, psi1.vec)
 
-                psiVal = psi(vec) # Basis made automatically
+                psiVal = psi(vec)  # Basis made automatically
                 psiList.append(psiVal)
 
                 i = indicies[loc][-1]+1
             else:
                 psiList.append(self.psis[i])
-                i+=1
-        if len(psiList)==1:
-            # if theres only one element left, then don't have to represent this as 
+                i += 1
+        if len(psiList) == 1:
+            # if theres only one element left, then don't have to represent this as
             # a tensor product anymore, so just represent it at a psi class
-            self.__class__= psi
+            self.__class__ = psi
             self.__init__(psiList[0].vec)
             # print("type of self is",type(self))
         else:
-            self.psis= np.array(psiList)
+            self.psis = np.array(psiList)
 
     def normalize(self):
         Psi2 = deepcopy(self)
         Psi2.preformProd()
         # print(type(Psi2))
-        c = Psi2.normalize(returnC=True)
+        c, _ = Psi2.normalize(returnC=True)
 
         for i in range(len(self.psis)):
-            self.psis[i].vec= self.psis[i].vec/c
+            self.psis[i].vec = self.psis[i].vec/c
         return self
 
     def __str__(self):
         out = ""
         for psi in self.psis:
-            out += "( " + psi.__str__() + " )" + u" \u2297  " #  unicode for tensor product
+            # unicode for tensor product
+            out += "( " + psi.__str__() + " )" + u" \u2297  "
         out = out[:-3]
         return out
-        
+
 
 def isConsecutive(indicies):
     """
@@ -309,11 +363,12 @@ def isConsecutive(indicies):
     isConsecutive(indicies)
     """
     for val in indicies:
-        difs = val[1:]- val[:-1]
-        test = (difs==1).all()
+        difs = val[1:] - val[:-1]
+        test = (difs == 1).all()
         if not test:
             return False
     return True
+
 
 class operTensorProd:
     """
@@ -334,7 +389,7 @@ class operTensorProd:
     """
 
     def __init__(self, mats, *otherMats):
-        if len(otherMats)==0:
+        if len(otherMats) == 0:
             self.mats = mats
         else:
             tmp = []
@@ -353,36 +408,37 @@ class operTensorProd:
 
         Parameters
         ------------
-        indicies, optional: 2d ndarray, 
+        indicies, optional: 2d ndarray,
             If None, then all elements are taken in the tensor product
 
             indicies[0] should give the first elements in psis for which the tensor product is taken
 
             indicies[0] must return consecutive values i.e. 1,2,3, otherwise the tensor product
             gets messed up
-        
+
         Returns
         ---------
         Nothing, this only updates the internal state. If you want to view the state after, just print it
         """
         if isinstance(indicies, type(None)):
-            indicies=np.arange(len(self.mats),dtype=int)
+            indicies = np.arange(len(self.mats), dtype=int)
 
-        if len(np.shape(indicies))==1: #deal with case when indicies is just passed as an array
-            indicies=np.array([indicies])
+        if len(np.shape(indicies)
+               ) == 1:  # deal with case when indicies is just passed as an array
+            indicies = np.array([indicies])
 
         if not isConsecutive(indicies):
             raise ValueError("indicies must be consecutive")
 
         # flatInd = np.ndarray.flatten(indicies)
-        firstVals = copy(indicies[:,0])
+        firstVals = copy(indicies[:, 0])
         matList = []
-        i=0
+        i = 0
         # print("indicies=",indicies)
         while i < len(self.mats):
             if i in firstVals:
                 mat = np.array(1, dtype=np.complex128)
-                loc = np.where(firstVals==i)[0][0]
+                loc = np.where(firstVals == i)[0][0]
                 # print("j=", j)
                 # print("ind[i]=", indicies[i])
                 for j in indicies[loc]:
@@ -393,7 +449,7 @@ class operTensorProd:
                     # print("mat after this step is\n",mat)
                 #     print("vec=", vec)
                 # print("len(vec)=",len(vec))
-                matVal = oper(mat) # Basis made automatically
+                matVal = oper(mat)  # Basis made automatically
                 matList.append(matVal)
 
                 i = indicies[loc][-1]+1
@@ -401,24 +457,24 @@ class operTensorProd:
                 # print("len(self.psis)=",len(self.psis))
             else:
                 matList.append(self.mats[i])
-                i+=1
+                i += 1
 
-        if len(matList)==1:
-            # if theres only one element left, then don't have to represent this as 
+        if len(matList) == 1:
+            # if theres only one element left, then don't have to represent this as
             # a tensor product anymore, so just represent it at a psi class
-            self.__class__= oper
+            self.__class__ = oper
             self.__init__(matList[0].mat)
             # print("type of self is",type(self))
         else:
-            self.mats= np.array(matList,dtype=object)
-
+            self.mats = np.array(matList, dtype=object)
 
     def __str__(self):
         out = ""
         for mat in self.mats:
-            out += mat.__str__() + u" \u2297  " +"\n"#  unicode for tensor product
+            out += mat.__str__() + u" \u2297  " + "\n"  # unicode for tensor product
         out = out[:-6]
         return out
+
 
 class oper:
     """
@@ -437,7 +493,7 @@ class oper:
 
         if isinstance(basis, type(None)):
             self.basis = operMakeNumBasis(self)
-        else: 
+        else:
             self.basis = basis
 
     def changeRep(self, newBasis):
@@ -473,7 +529,7 @@ class oper:
 def inner(bra, ket):
     """
     inner product of two vectors
-    <bra|ket> such that the complex conjugate of a is taken
+    <bra|ket> such that the complex conjugate of bra is taken
     """
     return np.dot(np.conjugate(bra), ket)
 
@@ -502,9 +558,6 @@ def waveChangeBasis(vec, basis, newBasis):
             vec2 = newBasis.vecs[j]
             transMat[i, j] = inner(vec1, vec2)
     conj = np.conjugate(transMat).T
-    # print("conj of transMat is \n", transMat)
-    # print("transMat should be hermetian conjugate, check for zeros")
-    # print(conj-transMat)
     return np.dot(conj, vec)
 
 
@@ -521,8 +574,6 @@ def arr2SqrtStr(vec):
     out: string
         The representation of that input vector
     """
-    rootList = {1/np.sqrt(2): "1/sqrt(2)",
-                np.sqrt(3)/2: "sqrt(3)/2"}
     out = "< "
     for val in vec:
         out += toSqrtStr(val)+', '
@@ -533,11 +584,11 @@ def arr2SqrtStr(vec):
 def toSqrtStr(val):
     rootList = {1/np.sqrt(2): "1/sqrt(2)",
                 np.sqrt(3)/2: "sqrt(3)/2",
-                1.0:"1",
-                0.0:'0'}
+                1.0: "1",
+                0.0: '0'}
 
     term = str(val)
-    sign= ""
+    sign = ""
     for root in rootList.keys():
         if abs(abs(val)-root) < 10**-5:
             term = rootList[root]
